@@ -37,7 +37,7 @@ from torch._guards import (
     tracing,
     TracingContext,
 )
-from torch._prims_common import CUDARngStateHelper
+from torch._prims_common import GPUARngStateHelper
 from torch._subclasses import FakeTensor
 from torch.fx.experimental._backward_state import BackwardState
 from torch.multiprocessing.reductions import StorageWeakRef
@@ -496,7 +496,7 @@ class FunctionalizedRngRuntimeWrapper(InductorWrapper):
             # Update example inputs for the fw_compiler
             fake_mode = detect_fake_mode()
             assert fake_mode is not None
-            seed, offset = CUDARngStateHelper.get_torch_state_as_tuple(fake_mode)
+            seed, offset = GPUARngStateHelper.get_torch_state_as_tuple(fake_mode)
             flat_args.extend([seed, offset])
             # We are not clearing flat_args here because
             # 1) There is a check in the debug compiler at the end
@@ -513,7 +513,7 @@ class FunctionalizedRngRuntimeWrapper(InductorWrapper):
         def wrapper(runtime_args: list[Any]):
             if runtime_metadata.is_rng_op_functionalized:
                 # Add the seed and offset to args
-                seed, offset = CUDARngStateHelper.get_torch_state_as_tuple()
+                seed, offset = GPUARngStateHelper.get_torch_state_as_tuple()
                 runtime_args.extend([seed, offset])
                 out = compiled_fn(runtime_args)
                 out = self._functionalized_rng_runtime_epilogue(
@@ -538,7 +538,7 @@ class FunctionalizedRngRuntimeWrapper(InductorWrapper):
         if metadata.is_rng_op_functionalized:
             assert metadata.num_outputs_rng_offset == 1
             new_rng_offset = outs[offset_index]
-            CUDARngStateHelper.set_new_offset(new_rng_offset)
+            GPUARngStateHelper.set_new_offset(new_rng_offset)
             if self.return_new_outs:
                 user_outs = outs[:offset_index] + outs[offset_index + 1 :]
                 return user_outs
@@ -1683,7 +1683,7 @@ def _backward_prologue_functional(
     rng_args = []
     if metadata.is_rng_op_functionalized:
         # Add the seed and offset to args
-        rng_args = CUDARngStateHelper.get_torch_state_as_tuple()
+        rng_args = GPUARngStateHelper.get_torch_state_as_tuple()
 
     bw_tokens = [None] * metadata.num_backward_tokens
 
